@@ -8,13 +8,16 @@ ARG PROJECT_TITLE="FrankenPHP for Symfony"
 ARG PROJECT_DESCRIPTION="FrankenPHP with PHP extensions, fcron and Caddy"
 ARG PROJECT_LICENSE="MIT"
 ARG VERSION="8.4-alpine"
-
+ARG VCS_REF=""
+ARG BUILD_DATE=""
 
 LABEL \
   org.opencontainers.image.title="$PROJECT_TITLE" \
   org.opencontainers.image.description="$PROJECT_DESCRIPTION" \
   org.opencontainers.image.licenses="$PROJECT_LICENSE" \
   org.opencontainers.image.version="$VERSION" \
+  org.opencontainers.image.revision="$VCS_REF" \
+  org.opencontainers.image.created="$BUILD_DATE"
 
 # Copy Caddy configuration
 COPY --chmod=644 Caddyfile /etc/caddy/Caddyfile

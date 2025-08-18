@@ -51,11 +51,20 @@ jobs:
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
           context: .
+          file: ./Dockerfile
           platforms: linux/${{ matrix.arch }}
           push: ${{ github.event_name != 'pull_request' }}
           # Suffix arch to each tag, so we can assemble a manifest later
           tags: ${{ steps.meta.outputs.tags }}-${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            FRANKENPHP_IMAGE=dunglas/frankenphp:php8.4-alpine
+            PROJECT_TITLE=FrankenPHP for Symfony
+            PROJECT_DESCRIPTION=FrankenPHP with PHP extensions, fcron and Caddy
+            PROJECT_LICENSE=MIT
+            VERSION=${{ github.ref_name }}
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ github.run_started_at }}
           cache-from: type=gha,scope=${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
 
