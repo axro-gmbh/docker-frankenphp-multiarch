@@ -1,0 +1,24 @@
+#!/bin/sh
+# Change UID to the one from user
+# NOTE: You cannot change the uid of the running process, so this must happen as root. Use -e USERSPACE=1 instead of --user=www-data at docker-compose
+
+set -e
+USERNAME="www-data"
+GROUPNAME=${USERNAME}
+
+# Change uid of the user.
+if [ `id -u ${USERNAME}` != ${UID} ]; then
+	usermod -u ${UID} ${USERNAME}
+fi
+if [ `id -g ${GROUPNAME}` != ${GID} ]; then
+	groupmod -g ${GID} ${GROUPNAME}
+fi
+
+# Call parent entrypoint (as other user) when needed
+if [ ! -z ${USERSPACE} ]; then
+	# Downgrade to ${USERNAME}
+	su-exec ${USERNAME} docker-php-entrypoint "$@"
+else
+	# Run as same user (root)
+	exec docker-php-entrypoint "$@"
+fi
