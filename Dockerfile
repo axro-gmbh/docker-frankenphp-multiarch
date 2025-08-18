@@ -1,13 +1,13 @@
 # You can pin a specific FrankenPHP tag by overriding this ARG at build time.
 # Example: docker build --build-arg FRANKENPHP_IMAGE=dunglas/frankenphp:1.3.1-alpine .
-ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.3-alpine
+ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.2-alpine
 FROM ${FRANKENPHP_IMAGE}
 
 # OCI labels (overridable via build args)
 ARG PROJECT_TITLE="FrankenPHP for Symfony"
 ARG PROJECT_DESCRIPTION="FrankenPHP with PHP extensions, fcron and Caddy"
 ARG PROJECT_LICENSE="MIT"
-ARG VERSION="8.3-alpine"
+ARG VERSION="8.2-alpine"
 ARG VCS_REF=""
 ARG BUILD_DATE=""
 
