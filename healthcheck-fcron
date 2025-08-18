@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+set -eu
+
+# healthcheck-fcron: verifies that fcron daemon is running.
+# Returns 0 when healthy, non-zero otherwise.
+
+# Configuration paths (must match fcron.conf in the image)
+PIDFILE="/usr/local/var/run/fcron.pid"
+FCRON_BIN="/usr/sbin/fcron"
+
+# 1) Ensure fcron tooling exists
+if ! command -v fcrondyn >/dev/null 2>&1 && [ ! -x "$FCRON_BIN" ]; then
+  echo "fcron not installed" >&2
+  exit 1
+fi
+
+# 2) Check PID file exists and process is alive
+if [ ! -f "$PIDFILE" ]; then
+  echo "fcron pidfile not found: $PIDFILE" >&2
+  exit 1
+fi
+PID="$(cat "$PIDFILE" 2>/dev/null || true)"
+if [ -z "$PID" ] || ! kill -0 "$PID" 2>/dev/null; then
+  echo "fcron process not running (pid: $PID)" >&2
+  exit 1
+fi
+
+# Optional: if fcrondyn is available, run a harmless query to confirm responsiveness
+if command -v fcrondyn >/dev/null 2>&1; then
+  # List running tasks (does not modify state). If it errors, consider unhealthy.
+  if ! fcrondyn -s >/dev/null 2>&1; then
+    echo "fcrondyn could not query daemon" >&2
+    exit 1
+  fi
+fi
+
+# Everything looks good
+exit 0
+
