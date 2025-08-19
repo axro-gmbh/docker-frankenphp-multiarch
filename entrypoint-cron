@@ -2,36 +2,19 @@
 set -eu
 
 # Ensure UID/GID remapping and env are set up consistently with the image
-# (this script may be used as the container's entrypoint)
 entrypoint-chuid
 
+# Determine crontab source; require it to exist
 CRON_FILE=${CRON_FILE:-/project/cron/crontab}
-FCRON_CONF=${FCRON_CONF:-/usr/local/etc/fcron.conf}
-SPOOL_DIR=/usr/local/var/spool/fcron
-RUN_DIR=/usr/local/var/run
-
-# Ensure fcron runtime dirs exist and are writable by group fcron
-install -d -m 0770 -o root -g fcron "$SPOOL_DIR"
-install -d -m 0770 -o root -g fcron "$RUN_DIR"
-
-# Load crontab for www-data if present
-if [ -f "$CRON_FILE" ]; then
-  echo "[entrypoint-cron] Installing crontab for www-data from $CRON_FILE"
-  # Use argument order expected by fcrontab: file first, then -u, and pass config
-  fcrontab "$CRON_FILE" -u www-data -c "$FCRON_CONF"
-else
-  echo "[entrypoint-cron] WARNING: CRON_FILE not found: $CRON_FILE — starting fcron without jobs" >&2
+if [ ! -f "$CRON_FILE" ]; then
+  echo "[entrypoint-cron] ERROR: crontab not found at $CRON_FILE. Mount your crontab or set CRON_FILE."
+  exit 1
 fi
 
-# Show installed crontab (for debugging)
-if fcrontab -l -u www-data -c "$FCRON_CONF" >/dev/null 2>&1; then
-  echo "[entrypoint-cron] Installed crontab for www-data:" && fcrontab -l -u www-data -c "$FCRON_CONF" || true
-fi
-
-# Start fcron in the foreground as root (daemon typically requires root),
-# jobs will run as their respective users (we installed www-data's crontab).
+# If a command is provided, run it as www-data; otherwise start supercronic
 if [ "$#" -gt 0 ]; then
-  exec "$@"
+  exec su-exec www-data "$@"
 else
-  exec /usr/sbin/fcron -f -y -c "$FCRON_CONF"
+  echo "[entrypoint-cron] Starting supercronic with $CRON_FILE"
+  exec su-exec www-data /usr/local/bin/supercronic -json "$CRON_FILE"
 fi
