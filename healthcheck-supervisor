@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+set -eu
+
+# healthcheck-supervisor: verifies supervisord and critical programs are RUNNING.
+# Exits 0 if healthy, non-zero otherwise.
+
+SUPERVISORCTL=${SUPERVISORCTL:-/usr/bin/supervisorctl}
+SUPERVISOR_CONF=${SUPERVISOR_CONF:-/etc/supervisord.conf}
+REQUIRED_PROGRAMS=${REQUIRED_PROGRAMS:-}
+
+# Ensure supervisorctl exists
+if ! command -v "$SUPERVISORCTL" >/dev/null 2>&1; then
+  echo "supervisorctl not found at $SUPERVISORCTL" >&2
+  exit 1
+fi
+
+# Query status; supervisorctl exits non-zero if server unreachable
+STATUS=$("$SUPERVISORCTL" -c "$SUPERVISOR_CONF" status 2>&1) || {
+  echo "$STATUS" >&2
+  exit 1
+}
+
+# Consider healthy if at least one program is RUNNING (any format: "since" or "pid/uptime")
+echo "$STATUS" | grep -q " RUNNING " || {
+  echo "no RUNNING programs under supervisord" >&2
+  echo "$STATUS" >&2
+  exit 1
+}
+
+# If REQUIRED_PROGRAMS is set (space-separated), ensure each is RUNNING
+if [ -n "$REQUIRED_PROGRAMS" ]; then
+  for prog in $REQUIRED_PROGRAMS; do
+    if ! echo "$STATUS" | awk -v p="$prog" '($1==p || index($1,p":")==1) && $2=="RUNNING" {found=1} END{exit(found?0:1)}'; then
+      echo "required program not RUNNING: $prog" >&2
+      echo "$STATUS" >&2
+      exit 1
+    fi
+  done
+fi
+
+exit 0
+

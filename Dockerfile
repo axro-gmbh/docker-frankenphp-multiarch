@@ -64,7 +64,16 @@ RUN apk add --no-cache \
 # fcron configuration and helper scripts
 COPY --chmod=600 fcron.conf /usr/local/etc/fcron.conf
 COPY --chmod=755 echomail /usr/local/bin/echomail
-RUN chown root:fcron /usr/local/etc/fcron.conf
+COPY --chmod=755 healthcheck-fcron /usr/local/bin/healthcheck-fcron
+COPY --chmod=755 healthcheck-supervisor /usr/local/bin/healthcheck-supervisor
+# Create fcron runtime and spool directories to match fcron.conf
+RUN set -eux; \
+    install -d -m 0750 -o root -g fcron /usr/local/var/spool/fcron; \
+    install -d -m 0770 -o root -g fcron /usr/local/var/run; \
+    # allow/deny files for user permissions (optional but avoids warnings)
+    install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.allow; \
+    install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.deny; \
+    chown root:fcron /usr/local/etc/fcron.conf
 
 # Base php ini
 COPY --chmod=644 docker-base.ini /usr/local/etc/php/conf.d/docker-base.ini
@@ -81,7 +90,8 @@ ENTRYPOINT ["entrypoint-chuid"]
 
 ENV SERVER_NAME=:80
 
-# Healthcheck tries /health first, then falls back to root
+# Default app healthcheck tries /health first, then falls back to root
+# You can override this from docker-compose to use healthcheck-fcron or healthcheck-supervisor instead.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -fsS http://127.0.0.1/health || curl -fsS http://127.0.0.1/ || exit 1
 
