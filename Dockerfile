@@ -1,11 +1,18 @@
 # You can pin a specific FrankenPHP tag by overriding this ARG at build time.
 # Example: docker build --build-arg FRANKENPHP_IMAGE=dunglas/frankenphp:1.3.1-alpine .
 ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.3-alpine
+
+# Build supercronic in a separate stage to support multiple architectures
+FROM golang:1.22-alpine AS supercronic-build
+ARG SUPERCRONIC_VERSION=v0.2.29
+RUN apk add --no-cache git \
+ && go install github.com/aptible/supercronic@${SUPERCRONIC_VERSION}
+
 FROM ${FRANKENPHP_IMAGE}
 
 # OCI labels (overridable via build args)
 ARG PROJECT_TITLE="FrankenPHP for Symfony"
-ARG PROJECT_DESCRIPTION="FrankenPHP with PHP extensions, fcron and Caddy"
+ARG PROJECT_DESCRIPTION="FrankenPHP with PHP extensions and Caddy"
 ARG PROJECT_LICENSE="MIT"
 ARG VERSION="8.3-alpine"
 ARG VCS_REF=""
@@ -58,22 +65,12 @@ RUN apk add --no-cache \
       curl \
       tzdata \
       shadow \
-      su-exec \
-      fcron
+      su-exec
 
-# fcron configuration and helper scripts
-COPY --chmod=600 fcron.conf /usr/local/etc/fcron.conf
-COPY --chmod=755 echomail /usr/local/bin/echomail
-COPY --chmod=755 healthcheck-fcron /usr/local/bin/healthcheck-fcron
+# Supervisord healthcheck script (optional) and supercronic
 COPY --chmod=755 healthcheck-supervisor /usr/local/bin/healthcheck-supervisor
-# Create fcron runtime and spool directories to match fcron.conf
-RUN set -eux; \
-    install -d -m 0750 -o root -g fcron /usr/local/var/spool/fcron; \
-    install -d -m 0770 -o root -g fcron /usr/local/var/run; \
-    # allow/deny files for user permissions (optional but avoids warnings)
-    install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.allow; \
-    install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.deny; \
-    chown root:fcron /usr/local/etc/fcron.conf
+# Add supercronic from build stage
+COPY --from=supercronic-build /go/bin/supercronic /usr/local/bin/supercronic
 
 # Base php ini
 COPY --chmod=644 docker-base.ini /usr/local/etc/php/conf.d/docker-base.ini
@@ -91,7 +88,7 @@ ENTRYPOINT ["entrypoint-chuid"]
 ENV SERVER_NAME=:80
 
 # Default app healthcheck tries /health first, then falls back to root
-# You can override this from docker-compose to use healthcheck-fcron or healthcheck-supervisor instead.
+# You can override this from docker-compose to use the supervisor healthcheck if needed.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -fsS http://127.0.0.1/health || curl -fsS http://127.0.0.1/ || exit 1
 
