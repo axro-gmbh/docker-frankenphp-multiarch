@@ -20,8 +20,8 @@ STATUS=$("$SUPERVISORCTL" -c "$SUPERVISOR_CONF" status 2>&1) || {
   exit 1
 }
 
-echo "$STATUS" | grep -E "^\S+\s+RUNNING\s+since" >/dev/null || {
-  # If no RUNNING processes found at all, definitely unhealthy
+# Consider healthy if at least one program is RUNNING (any format: "since" or "pid/uptime")
+echo "$STATUS" | grep -q " RUNNING " || {
   echo "no RUNNING programs under supervisord" >&2
   echo "$STATUS" >&2
   exit 1
@@ -30,11 +30,11 @@ echo "$STATUS" | grep -E "^\S+\s+RUNNING\s+since" >/dev/null || {
 # If REQUIRED_PROGRAMS is set (space-separated), ensure each is RUNNING
 if [ -n "$REQUIRED_PROGRAMS" ]; then
   for prog in $REQUIRED_PROGRAMS; do
-    echo "$STATUS" | grep -E "^${prog}\s+RUNNING\s+since" >/dev/null || {
+    if ! echo "$STATUS" | awk -v p="$prog" '($1==p || index($1,p":")==1) && $2=="RUNNING" {found=1} END{exit(found?0:1)}'; then
       echo "required program not RUNNING: $prog" >&2
       echo "$STATUS" >&2
       exit 1
-    }
+    fi
   done
 fi
 
