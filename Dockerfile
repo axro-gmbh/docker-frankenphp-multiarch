@@ -68,10 +68,13 @@ COPY --chmod=755 healthcheck-fcron /usr/local/bin/healthcheck-fcron
 COPY --chmod=755 healthcheck-supervisor /usr/local/bin/healthcheck-supervisor
 # Create fcron runtime and spool directories to match fcron.conf
 RUN set -eux; \
-    install -d -m 0750 -o root -g fcron /usr/local/var/spool/fcron; \
+    # Ensure www-data can operate with group fcron
+    usermod -a -G fcron www-data; \
+    install -d -m 0770 -o root -g fcron /usr/local/var/spool/fcron; \
     install -d -m 0770 -o root -g fcron /usr/local/var/run; \
     # allow/deny files for user permissions (optional but avoids warnings)
-    install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.allow; \
+    printf '%s\n' www-data > /usr/local/etc/fcron.allow; \
+    chown root:fcron /usr/local/etc/fcron.allow; chmod 0640 /usr/local/etc/fcron.allow; \
     install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.deny; \
     chown root:fcron /usr/local/etc/fcron.conf
 
