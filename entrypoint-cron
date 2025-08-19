@@ -1,7 +1,20 @@
 #!/bin/sh
+set -eu
+
+# Ensure UID/GID remapping and env are set up consistently with the image
 entrypoint-chuid
 
-# Install mounted crontab as www-data user
-fcrontab -u www-data /project/cron/crontab
+# Determine crontab source; require it to exist
+CRON_FILE=${CRON_FILE:-/project/cron/crontab}
+if [ ! -f "$CRON_FILE" ]; then
+  echo "[entrypoint-cron] ERROR: crontab not found at $CRON_FILE. Mount your crontab or set CRON_FILE."
+  exit 1
+fi
 
-$@
+# If a command is provided, run it as www-data; otherwise start supercronic
+if [ "$#" -gt 0 ]; then
+  exec su-exec www-data "$@"
+else
+  echo "[entrypoint-cron] Starting supercronic with $CRON_FILE"
+  exec su-exec www-data /usr/local/bin/supercronic -json "$CRON_FILE"
+fi
