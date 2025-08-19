@@ -66,7 +66,14 @@ COPY --chmod=600 fcron.conf /usr/local/etc/fcron.conf
 COPY --chmod=755 echomail /usr/local/bin/echomail
 COPY --chmod=755 healthcheck-fcron /usr/local/bin/healthcheck-fcron
 COPY --chmod=755 healthcheck-supervisor /usr/local/bin/healthcheck-supervisor
-RUN chown root:fcron /usr/local/etc/fcron.conf
+# Create fcron runtime and spool directories to match fcron.conf
+RUN set -eux; \
+    install -d -m 0750 -o root -g fcron /usr/local/var/spool/fcron; \
+    install -d -m 0770 -o root -g fcron /usr/local/var/run; \
+    # allow/deny files for user permissions (optional but avoids warnings)
+    install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.allow; \
+    install -o root -g fcron -m 0640 /dev/null /usr/local/etc/fcron.deny; \
+    chown root:fcron /usr/local/etc/fcron.conf
 
 # Base php ini
 COPY --chmod=644 docker-base.ini /usr/local/etc/php/conf.d/docker-base.ini
