@@ -1,7 +1,35 @@
 #!/bin/sh
+set -eu
+
+# Ensure UID/GID remapping and env are set up consistently with the image
+# (this script may be used as the container's entrypoint)
 entrypoint-chuid
 
-# Install mounted crontab as www-data user
-fcrontab -u www-data /project/cron/crontab
+CRON_FILE=${CRON_FILE:-/project/cron/crontab}
+FCRON_CONF=${FCRON_CONF:-/usr/local/etc/fcron.conf}
+SPOOL_DIR=/usr/local/var/spool/fcron
+RUN_DIR=/usr/local/var/run
 
-$@
+# Ensure fcron runtime dirs exist and are writable by group fcron
+install -d -m 0770 -o root -g fcron "$SPOOL_DIR"
+install -d -m 0770 -o root -g fcron "$RUN_DIR"
+
+# Load crontab for www-data if present
+if [ -f "$CRON_FILE" ]; then
+  echo "[entrypoint-cron] Installing crontab for www-data from $CRON_FILE"
+  fcrontab -u www-data "$CRON_FILE"
+else
+  echo "[entrypoint-cron] WARNING: CRON_FILE not found: $CRON_FILE — starting fcron without jobs" >&2
+fi
+
+# Show installed crontab (for debugging)
+if fcrontab -l -u www-data >/dev/null 2>&1; then
+  echo "[entrypoint-cron] Installed crontab for www-data:" && fcrontab -l -u www-data || true
+fi
+
+# Start fcron in the foreground as www-data (use provided args if any)
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+else
+  exec su-exec www-data fcron -f -y -c "$FCRON_CONF"
+fi
