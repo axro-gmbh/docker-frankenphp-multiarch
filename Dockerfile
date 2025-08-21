@@ -49,14 +49,6 @@ RUN install-php-extensions \
     xsl \
     zip
 
-# Secure Composer install (pin version via ARG if desired)
-ARG COMPOSER_VERSION=2.7.7
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
- && php -r "copy('https://composer.github.io/installer.sig', 'composer-setup.sig');" \
- && php -r "if (trim(file_get_contents('composer-setup.sig')) !== hash_file('SHA384', 'composer-setup.php')) { fwrite(STDERR, 'Invalid installer signature'.PHP_EOL); exit(1); }" \
- && php composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer --version=${COMPOSER_VERSION} \
- && rm composer-setup.php composer-setup.sig
-
 # Install packages in a single layer
 RUN apk add --no-cache \
       git \
