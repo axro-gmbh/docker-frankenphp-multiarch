@@ -67,6 +67,13 @@ RUN apk add --no-cache \
       shadow \
       su-exec
 
+# Composer (deterministic): use official binary
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+# Use a non-volume path for Composer cache/home and make it writable
+ENV COMPOSER_HOME=/var/www/.composer
+RUN mkdir -p "$COMPOSER_HOME" && chmod 0777 "$COMPOSER_HOME"
+
 # Supervisord healthcheck script (optional) and supercronic
 COPY --chmod=755 healthcheck-supervisor /usr/local/bin/healthcheck-supervisor
 # Add supercronic from build stage
@@ -74,10 +81,6 @@ COPY --from=supercronic-build /go/bin/supercronic /usr/local/bin/supercronic
 
 # Base php ini
 COPY --chmod=644 docker-base.ini /usr/local/etc/php/conf.d/docker-base.ini
-
-# Composer cache
-ENV COMPOSER_HOME=/home/www-data/.composer
-VOLUME ["/home/www-data/.composer"]
 
 # Utility scripts
 COPY --chmod=755 wait-for /usr/local/bin/wait-for
