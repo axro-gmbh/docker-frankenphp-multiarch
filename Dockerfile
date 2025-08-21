@@ -49,14 +49,6 @@ RUN install-php-extensions \
     xsl \
     zip
 
-# Secure Composer install (pin version via ARG if desired)
-ARG COMPOSER_VERSION=2.7.7
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
- && php -r "copy('https://composer.github.io/installer.sig', 'composer-setup.sig');" \
- && php -r "if (trim(file_get_contents('composer-setup.sig')) !== hash_file('SHA384', 'composer-setup.php')) { fwrite(STDERR, 'Invalid installer signature'.PHP_EOL); exit(1); }" \
- && php composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer --version=${COMPOSER_VERSION} \
- && rm composer-setup.php composer-setup.sig
-
 # Install packages in a single layer
 RUN apk add --no-cache \
       git \
@@ -67,6 +59,13 @@ RUN apk add --no-cache \
       shadow \
       su-exec
 
+# Composer (deterministic): use official binary
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+# Use a non-volume path for Composer cache/home and make it writable
+ENV COMPOSER_HOME=/var/www/.composer
+RUN mkdir -p "$COMPOSER_HOME" && chmod 0777 "$COMPOSER_HOME"
+
 # Supervisord healthcheck script (optional) and supercronic
 COPY --chmod=755 healthcheck-supervisor /usr/local/bin/healthcheck-supervisor
 # Add supercronic from build stage
@@ -74,10 +73,6 @@ COPY --from=supercronic-build /go/bin/supercronic /usr/local/bin/supercronic
 
 # Base php ini
 COPY --chmod=644 docker-base.ini /usr/local/etc/php/conf.d/docker-base.ini
-
-# Composer cache
-ENV COMPOSER_HOME=/home/www-data/.composer
-VOLUME ["/home/www-data/.composer"]
 
 # Utility scripts
 COPY --chmod=755 wait-for /usr/local/bin/wait-for
