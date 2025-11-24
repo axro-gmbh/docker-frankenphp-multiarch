@@ -1,6 +1,6 @@
 # You can pin a specific FrankenPHP tag by overriding this ARG at build time.
 # Example: docker build --build-arg FRANKENPHP_IMAGE=dunglas/frankenphp:1.3.1-alpine .
-ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.4-alpine
+ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.5-alpine
 
 # Build supercronic in a separate stage to support multiple architectures
 FROM golang:1.22-alpine AS supercronic-build
