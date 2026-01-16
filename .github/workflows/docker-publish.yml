@@ -58,7 +58,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}-${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            FRANKENPHP_IMAGE=dunglas/frankenphp:php8.4-alpine
+            FRANKENPHP_IMAGE=dunglas/frankenphp:php8.5-alpine
             PROJECT_TITLE=FrankenPHP for Symfony
             PROJECT_DESCRIPTION=FrankenPHP with PHP extensions, fcron and Caddy
             PROJECT_LICENSE=MIT
