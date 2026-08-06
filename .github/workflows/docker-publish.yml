@@ -56,6 +56,13 @@ jobs:
             exit 1
           fi
 
+      - name: Materialize SSH private key for BuildKit secret-file input
+        env:
+          DOCKER_IMAGE_SSH_PRIVATE_KEY: ${{ secrets.DOCKER_IMAGE_SSH_PRIVATE_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$DOCKER_IMAGE_SSH_PRIVATE_KEY" > /tmp/docker_image_id_rsa
+
       - name: Build and push single-arch image (${{ matrix.arch }})
         id: build-and-push
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
@@ -64,8 +71,8 @@ jobs:
           file: ./Dockerfile
           platforms: linux/${{ matrix.arch }}
           push: ${{ github.event_name != 'pull_request' }}
-          secrets: |
-            id_rsa=${{ secrets.DOCKER_IMAGE_SSH_PRIVATE_KEY }}
+          secret-files: |
+            id_rsa=/tmp/docker_image_id_rsa
           # Suffix arch to each tag, so we can assemble a manifest later
           tags: ${{ steps.meta.outputs.tags }}-${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
