@@ -46,6 +46,16 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      - name: Validate SSH private key secret is configured
+        env:
+          DOCKER_IMAGE_SSH_PRIVATE_KEY: ${{ secrets.DOCKER_IMAGE_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$DOCKER_IMAGE_SSH_PRIVATE_KEY" ]; then
+            echo "Missing required GitHub secret: DOCKER_IMAGE_SSH_PRIVATE_KEY" >&2
+            echo "Configure it in repository or organization secrets before running this workflow." >&2
+            exit 1
+          fi
+
       - name: Build and push single-arch image (${{ matrix.arch }})
         id: build-and-push
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
@@ -54,6 +64,8 @@ jobs:
           file: ./Dockerfile
           platforms: linux/${{ matrix.arch }}
           push: ${{ github.event_name != 'pull_request' }}
+          secrets: |
+            id_rsa=${{ secrets.DOCKER_IMAGE_SSH_PRIVATE_KEY }}
           # Suffix arch to each tag, so we can assemble a manifest later
           tags: ${{ steps.meta.outputs.tags }}-${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}

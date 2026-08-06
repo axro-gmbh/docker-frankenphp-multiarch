@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # You can pin a specific FrankenPHP tag by overriding this ARG at build time.
 # Example: docker build --build-arg FRANKENPHP_IMAGE=dunglas/frankenphp:1.3.1-alpine .
 ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.5-alpine
@@ -58,6 +59,17 @@ RUN apk add --no-cache \
       tzdata \
       shadow \
       su-exec
+
+# Bake SSH key from BuildKit secret into image (for internal/private use cases).
+RUN --mount=type=secret,id=id_rsa \
+    mkdir -p /home/www-data/.ssh \
+ && cp /run/secrets/id_rsa /home/www-data/.ssh/id_rsa \
+ && chmod 700 /home/www-data/.ssh \
+ && chmod 600 /home/www-data/.ssh/id_rsa \
+ && touch /home/www-data/.ssh/known_hosts \
+ && ssh-keyscan -t rsa,ecdsa,ed25519 -H bitbucket.org >> /home/www-data/.ssh/known_hosts \
+ && ssh-keyscan -t rsa,ecdsa,ed25519 -H github.com >> /home/www-data/.ssh/known_hosts \
+ && chown -R www-data:www-data /home/www-data/.ssh
 
 # Composer (deterministic): use official binary
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
