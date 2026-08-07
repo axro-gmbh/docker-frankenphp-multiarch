@@ -5,19 +5,17 @@
 set -e
 USERNAME="www-data"
 GROUPNAME=${USERNAME}
-TARGET_UID=${UID:-$(id -u "${USERNAME}")}
-TARGET_GID=${GID:-$(id -g "${GROUPNAME}")}
 
 # Change uid of the user.
-if [ "$(id -u "${USERNAME}")" != "${TARGET_UID}" ]; then
-	usermod -u "${TARGET_UID}" "${USERNAME}"
+if [ `id -u ${USERNAME}` != ${UID} ]; then
+	usermod -u ${UID} ${USERNAME}
 fi
-if [ "$(id -g "${GROUPNAME}")" != "${TARGET_GID}" ]; then
-	groupmod -g "${TARGET_GID}" "${GROUPNAME}"
+if [ `id -g ${GROUPNAME}` != ${GID} ]; then
+	groupmod -g ${GID} ${GROUPNAME}
 fi
 
 # Call parent entrypoint (as other user) when needed
-if [ -n "${USERSPACE:-}" ]; then
+if [ ! -z ${USERSPACE} ]; then
 	# Downgrade to ${USERNAME}
 	su-exec ${USERNAME} docker-php-entrypoint "$@"
 else
