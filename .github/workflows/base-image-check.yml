@@ -1,0 +1,65 @@
+name: Base image check
+
+# Rebuilds every image variant whose official FrankenPHP base image has changed since our last build.
+# Scheduled workflows only run on the default branch, so this file lives there and
+# dispatches docker-publish.yml on the variant branches.
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { branch: 8.2-alpine-symfony, base: 'dunglas/frankenphp:php8.2-alpine' }
+          - { branch: 8.3-alpine-symfony, base: 'dunglas/frankenphp:php8.3-alpine' }
+          - { branch: 8.4-alpine-symfony, base: 'dunglas/frankenphp:php8.4-alpine' }
+          - { branch: 8.5-alpine-symfony, base: 'dunglas/frankenphp:php8.5-alpine' }
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      IMAGE: ghcr.io/${{ github.repository }}:${{ matrix.branch }}
+    steps:
+      # The GHCR package is private even though the repository is public
+      - name: Log into registry ghcr.io
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Our image is stale when its bottom layers are no longer the current base layers
+      - name: Compare base layers
+        id: compare
+        run: |
+          layers() {
+            docker buildx imagetools inspect "$1" --format '{{json (index .Image "linux/amd64").RootFS.DiffIDs}}'
+          }
+          BASE="$(layers '${{ matrix.base }}')"
+          OURS="$(layers "$IMAGE")"
+          STALE="$(jq -n --argjson b "$BASE" --argjson o "$OURS" '$o[:($b|length)] != $b')"
+          echo "${{ matrix.branch }}: stale=$STALE"
+          echo "stale=$STALE" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger rebuild
+        if: steps.compare.outputs.stale == 'true'
+        run: gh workflow run docker-publish.yml -R "${{ github.repository }}" --ref "${{ matrix.branch }}"
+
+  # GitHub disables scheduled workflows in public repos after 60 days without activity.
+  # Re-enabling the workflow resets that timer.
+  keepalive:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/base-image-check.yml/enable"
