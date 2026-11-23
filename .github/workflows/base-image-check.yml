@@ -19,6 +19,7 @@ jobs:
           - { branch: 8.3-alpine-symfony, base: 'dunglas/frankenphp:php8.3-alpine' }
           - { branch: 8.4-alpine-symfony, base: 'dunglas/frankenphp:php8.4-alpine' }
           - { branch: 8.5-alpine-symfony, base: 'dunglas/frankenphp:php8.5-alpine' }
+          - { branch: 8.6-alpine-symfony, base: 'dunglas/frankenphp:php8.6-alpine' }
     runs-on: ubuntu-latest
     permissions:
       contents: read
