@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # You can pin a specific FrankenPHP tag by overriding this ARG at build time.
 # Example: docker build --build-arg FRANKENPHP_IMAGE=dunglas/frankenphp:1.3.1-alpine .
-ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.5-alpine
+ARG FRANKENPHP_IMAGE=dunglas/frankenphp:php8.6-alpine
 
 # Build supercronic in a separate stage to support multiple architectures
 FROM golang:1.22-alpine AS supercronic-build
@@ -15,7 +15,7 @@ FROM ${FRANKENPHP_IMAGE}
 ARG PROJECT_TITLE="FrankenPHP for Symfony"
 ARG PROJECT_DESCRIPTION="FrankenPHP with PHP extensions and Caddy"
 ARG PROJECT_LICENSE="MIT"
-ARG VERSION="8.5-alpine"
+ARG VERSION="8.6-alpine"
 ARG VCS_REF=""
 ARG BUILD_DATE=""
 
@@ -32,7 +32,6 @@ COPY --chmod=644 Caddyfile /etc/caddy/Caddyfile
 
 # Install PHP extensions
 RUN install-php-extensions \
-    apcu \
     bz2 \
     dom \
     exif \
@@ -49,6 +48,16 @@ RUN install-php-extensions \
     xml \
     xsl \
     zip
+
+# apcu 5.1.28 does not build on PHP 8.6 and PECL rejects the -dev version of master,
+# so install it with PIE pinned to master until 5.1.29 is released (krakjoe/apcu#634).
+# PIE (successor of PECL) is mounted for this step only and does not end up in the image
+RUN --mount=type=bind,from=ghcr.io/php/pie:1-bin,source=/pie,target=/usr/local/bin/pie \
+    set -eux; \
+    apk add --no-cache --virtual .pie-build-deps $PHPIZE_DEPS unzip libtool \
+    && pie install --no-cache "apcu/apcu:dev-master#ebbcd3d1" \
+    && apk del .pie-build-deps \
+    && rm -rf /tmp/* /root/.pie
 
 # Install packages in a single layer
 RUN apk add --no-cache \
