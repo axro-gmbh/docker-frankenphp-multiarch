@@ -6,7 +6,7 @@ set -eu
 IMAGE="$1"
 
 # Extensions every consumer relies on, as listed by `php -m` (case-insensitive)
-EXTENSIONS="apcu bz2 dom exif fileinfo gd intl pcntl pdo_mysql pdo_sqlite session simplexml xml xsl zip"
+EXTENSIONS="apcu bz2 dom exif fileinfo gd intl mbstring pcntl pdo_mysql pdo_sqlite session simplexml xml xsl zip"
 
 run() {
     docker run --rm --entrypoint "" "$IMAGE" "$@"

@@ -38,6 +38,7 @@ RUN install-php-extensions \
     fileinfo \
     gd \
     intl \
+    mbstring \
     opcache \
     pcntl \
     pdo \
